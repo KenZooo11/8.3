@@ -6,6 +6,17 @@ data = pd.read_csv('fatal-police-shootings-data.csv')
 stany = pd.read_html('https://en.wikipedia.org/wiki/List_of_U.S._state_and_territory_abbreviations', header=0)
 populacja = pd.read_html('https://simple.wikipedia.org/wiki/List_of_U.S._states_by_population', header=0)
 
+stany = stany.iloc[:, [0, 5]] if isinstance(stany, pd.DataFrame) else stany[0].iloc[:, [0, 5]]
+populacja = populacja.iloc[:, [2, 3]] if isinstance(populacja, pd.DataFrame) else populacja[0].iloc[:, [2, 3]]
+stany.columns = ['State', 'Abbreviation']
+populacja.columns = ['State', 'Population']
+
+merged_data = pd.merge(stany, populacja, on='State')
+merged_data = pd.merge(merged_data, data.groupby('state').count()['id'].reset_index(), left_on='Abbreviation', right_on='state')
+merged_data.rename(columns={'id': 'Quantity'}, inplace=True)
+merged_data['Incidents_per_1000'] = (merged_data['Quantity'] / merged_data['Population']) * 1000
+
+
 pivot_table = pd.pivot_table(data, index='race', columns='signs_of_mental_illness', aggfunc='size', fill_value=0)
 
 pivot_table['Percent_with_Mental_Illness'] = pivot_table.apply(lambda row: (row[True] / (row[True] + row[False])) * 100, axis=1)
@@ -19,6 +30,7 @@ interwencje = data['Day_of_Week'].value_counts().reindex(['Monday', 'Tuesday', '
 print(data.head())
 print("\n", pivot_table)
 print("\nRasa z największym odsetkiem znamion choroby psychicznej: {}, Odsetek: {:.2f}%".format(najwyzszy_odsetek_rasy, najwyzszy_odsetek))
+print("\n", merged_data)
 
 plt.figure(figsize=(10, 6))
 interwencje.plot(kind='bar', color='skyblue')
